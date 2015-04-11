@@ -1,0 +1,5 @@
+---
+baseurl: https://ssbox.unicloud.org.tw/api/
+path: /
+email: your@mail.here
+password: yourpassword

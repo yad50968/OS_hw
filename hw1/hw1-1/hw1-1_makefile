@@ -1,0 +1,7 @@
+all:hw1-1 clean
+hw1-1:hw1-1.o
+	gcc -o hw1-1 hw1-1.o
+hw1-1.o:hw1-1.c
+	gcc -c hw1-1.c  
+clean:
+	$(RM) *.o

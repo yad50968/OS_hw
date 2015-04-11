@@ -1,0 +1,129 @@
+#!/usr/bin/env ruby
+require 'curb'
+require 'json'
+require 'yaml'
+
+def help
+  puts "Usage:\n# List all files.\n./ssbox list\n\n# Upload file by filename.\n./ssbox upload filename\n\n# Download file.\n./ssbox download filename\n\n# Delete remote file by filename.\n./ssbox delete filename\n\n# Move remote file from one to another.\n./ssbox move from to"
+end
+
+def list(curl, baseurl, path)
+  curl.url = baseurl + "metadata/#{path}"
+  curl.http_get
+  if JSON.parse(curl.body_str)["contents"]
+    JSON.parse(curl.body_str)["contents"].each do |item|
+      puts item["path"]
+    end
+  end
+end
+
+def upload(curl, baseurl, path, filename)
+  curl.url = baseurl + "files/#{path}#{filename}?force=true"
+  curl.http_put(File.read(filename)) if File.exist?(filename)
+end
+
+def download(curl, baseurl, path, filename)
+  curl.url = baseurl + "files/#{path}#{filename}"
+  curl.http_get
+  file = File.new(filename, "w")
+  file.puts curl.body_str
+end
+
+def delete(curl, baseurl, path, filename)
+  curl.url = baseurl + "fileops/delete"
+  fields = [Curl::PostField.content("path", "#{path}#{filename}")]
+  curl.http_post(*fields)
+end
+
+def move(curl, baseurl, path, from, to)
+  curl.url = baseurl + "fileops/move"
+  fields = [Curl::PostField.content("from_path", "#{path}#{from}"),
+           Curl::PostField.content("to_path", "#{path}#{to}")]
+  curl.http_post(*fields)
+end
+
+=begin
+def copy(curl, baseurl, path, from, to)
+  curl.url = baseurl + "fileops/copy"
+  fields = [Curl::PostField.content("from_path", "#{path}#{from}"),
+           Curl::PostField.content("to_path", "#{path}#{to}")]
+  curl.http_post(*fields)
+end
+=end
+
+config = YAML.load_file("ssbox.yaml")
+baseurl = config["baseurl"]
+authurl = baseurl + "token"
+email = config["email"]
+secret = config["password"]
+path = config["path"]
+uagent = "Mozilla/5.0 (X11; Linux x86_64; rv:31.0) Gecko/20100101 Firefox/31.0 Iceweasel/31.1.0"
+
+if email.nil? || secret.nil?
+  puts "Please correct ssbox.yaml."
+  exit
+end
+
+fields = [Curl::PostField.content("email", email),
+          Curl::PostField.content("secret", secret),
+          Curl::PostField.content("proxy", true)]
+
+#if ARGV[0] !~ /list|upload|download|delete|move|copy/
+if ARGV[0] !~ /list|upload|download|delete|move/
+  help
+  exit
+end
+
+curl = Curl::Easy.new(authurl)
+curl.headers["User-Agent"] = uagent
+curl.enable_cookies = true
+curl.follow_location = true
+curl.http_post(*fields)
+token = JSON.parse(curl.body_str)["token"]
+curl.http_auth_types = :basic
+curl.username = email
+curl.password = token
+
+if token.nil?
+  puts "Please correct ssbox.yaml."
+  exit
+end
+
+case ARGV[0]
+when "list";
+  list(curl, baseurl, path)
+when "upload";
+  if ARGV[1].nil?
+    help
+    exit
+  end
+  if File.exist?(ARGV[1])
+    upload(curl, baseurl, path, ARGV[1])
+  end
+when "download";
+  if ARGV[1].nil?
+    help
+    exit
+  end
+  download(curl, baseurl, path, ARGV[1])
+when "delete";
+  if ARGV[1].nil?
+    help
+    exit
+  end
+  delete(curl, baseurl, path, ARGV[1])
+when "move";
+  if ARGV[1].nil? || ARGV[2].nil?
+    help
+    exit
+  end
+  move(curl, baseurl, path, ARGV[1], ARGV[2])
+=begin
+when "copy";
+  if ARGV[1].nil? || ARGV[2].nil?
+    help
+    exit
+  end
+  copy(curl, baseurl, path, ARGV[1], ARGV[2])
+=end
+end

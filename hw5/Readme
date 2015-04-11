@@ -1,0 +1,6 @@
+1.  type   make  to complienr
+2.  type  sudo sh ./mkdev.sh num1 num2
+     (num1 and num2 can be get by type dmesg )
+3.  type  ./test  
+4.  type make clean to clean all 
+

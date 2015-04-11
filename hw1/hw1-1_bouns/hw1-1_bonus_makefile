@@ -1,0 +1,7 @@
+all:hw1-1_bonus clean
+hw1-1_bonus:hw1-1_bonus.o
+	gcc -o hw1-1_bonus hw1-1_bonus.o
+hw1-1_bonus.o:hw1-1_bonus.c
+	gcc -c hw1-1_bonus.c  
+clean:
+	$(RM) *.o
